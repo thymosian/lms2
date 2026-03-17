@@ -99,6 +99,13 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     const body = await request.json();
     const { enrollmentId, answers, timeTaken } = body;
 
+    // Validate timeTaken
+    if (timeTaken !== undefined && timeTaken !== null) {
+      if (typeof timeTaken !== 'number' || isNaN(timeTaken) || timeTaken < 0) {
+        return NextResponse.json({ error: 'Invalid timeTaken value' }, { status: 400 });
+      }
+    }
+
     // Verify enrollment belongs to user
     const enrollment = await prisma.enrollment.findUnique({
       where: { id: enrollmentId },
