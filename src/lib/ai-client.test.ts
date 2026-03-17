@@ -90,10 +90,10 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'AI response' }] } }],
       };
 
-      (global.fetch as any).mockResolvedValue({
+      vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
-      });
+      } as unknown as Response);
 
       const result = await callVertexAI('test prompt');
       expect(result).toBe('AI response');
@@ -113,17 +113,17 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Success after retry' }] } }],
       };
 
-      (global.fetch as any)
+      vi.spyOn(global, 'fetch')
         .mockResolvedValueOnce({
           status: 429,
           statusText: 'Too Many Requests',
           text: async () => 'Rate limit exceeded',
           ok: false,
-        })
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        });
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
 
@@ -140,17 +140,17 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Success after 500' }] } }],
       };
 
-      (global.fetch as any)
+      vi.spyOn(global, 'fetch')
         .mockResolvedValueOnce({
           status: 500,
           statusText: 'Internal Server Error',
           text: async () => 'Server error',
           ok: false,
-        })
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        });
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
       await vi.runAllTimersAsync();
@@ -161,37 +161,73 @@ describe('ai-client utilities', () => {
     });
 
     it('should throw error after maximum retries', async () => {
-      (global.fetch as any).mockResolvedValue({
+      vi.spyOn(global, 'fetch').mockResolvedValue({
         status: 429,
         statusText: 'Too Many Requests',
         text: async () => 'Rate limit exceeded',
         ok: false,
-      });
+      } as unknown as Response);
 
-      const callPromise = callVertexAI('test');
+      let errorCaught = false;
+      const callPromise = callVertexAI('test').catch((e) => {
+        errorCaught = true;
+        expect(e.message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
+      });
 
       // Run all retries
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
 
-      await expect(callPromise).rejects.toThrow(
-        'Vertex AI 429 Too Many Requests: Rate limit exceeded',
-      );
+      await callPromise;
+      expect(errorCaught).toBe(true);
       expect(global.fetch).toHaveBeenCalledTimes(5);
     });
 
     it('should throw on non-retryable errors (e.g., 400)', async () => {
-      (global.fetch as any).mockResolvedValue({
+      vi.spyOn(global, 'fetch').mockResolvedValue({
         status: 400,
         statusText: 'Bad Request',
         text: async () => 'Invalid prompt',
         ok: false,
-      });
+      } as unknown as Response);
 
       await expect(callVertexAI('test')).rejects.toThrow(
         'Vertex AI 400 Bad Request: Invalid prompt',
       );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry on fetch failed errors (network issues)', async () => {
+      const mockSuccessResponse = {
+        candidates: [{ content: { parts: [{ text: 'Success after fetch failed' }] } }],
+      };
+
+      vi.spyOn(global, 'fetch')
+        .mockRejectedValueOnce(new Error('fetch failed: network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockSuccessResponse,
+        } as unknown as Response);
+
+      const callPromise = callVertexAI('test');
+
+      // Advance timers to trigger retry
+      await vi.runAllTimersAsync();
+
+      const result = await callPromise;
+      expect(result).toBe('Success after fetch failed');
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should throw immediately on non-retryable fetch errors', async () => {
+      const nonRetryableError = new TypeError('Network request failed');
+
+      vi.spyOn(global, 'fetch').mockRejectedValue(nonRetryableError);
+
+      await expect(callVertexAI('test')).rejects.toThrow('Network request failed');
+
+      // Ensure it only called fetch once and didn't retry
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
   });
