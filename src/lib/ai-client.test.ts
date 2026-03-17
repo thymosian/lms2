@@ -7,7 +7,26 @@ describe('ai-client utilities', () => {
       expect(estimateTokens('abcd')).toBe(1);
       expect(estimateTokens('abcdefgh')).toBe(2);
       expect(estimateTokens('abcde')).toBe(2); // Ceiling of 5/4
+    });
+
+    it('should return 0 for an empty string', () => {
       expect(estimateTokens('')).toBe(0);
+    });
+
+    it('should approximate well for a long string', () => {
+      // Create a string of 4000 characters
+      const longString = 'a'.repeat(4000);
+      expect(estimateTokens(longString)).toBe(1000);
+
+      const irregularLongString = 'abcd'.repeat(1000) + 'ef';
+      // 4002 characters -> 4002 / 4 = 1000.5 -> ceil = 1001
+      expect(estimateTokens(irregularLongString)).toBe(1001);
+    });
+
+    it('should handle whitespace and special characters', () => {
+      expect(estimateTokens('    ')).toBe(1); // 4 spaces
+      expect(estimateTokens('\n\n\n\n')).toBe(1); // 4 newlines
+      expect(estimateTokens('👨‍👩‍👧‍👦')).toBe(3); // emoji chars, length is 11
     });
   });
 
@@ -19,29 +38,8 @@ describe('ai-client utilities', () => {
 
     it('should truncate at sentence boundary if possible', () => {
       // 10 tokens * 4 = 40 characters
-      const text = 'First sentence. Second sentence. Third sentence.';
-      // "First sentence. Second sentence. " is 33 chars
-      // "First sentence. Second sentence. Third" is 38 chars
-      // Truncated at 40: "First sentence. Second sentence. Third s"
-      // Last sentence end: ". " at index 14 and 31.
-      // 31 is > 40 * 0.8 (32)? No, 31 is not > 32.
-      // Wait, let's re-calculate.
-      // maxChars = 40
-      // truncated = text.substring(0, 40) -> "First sentence. Second sentence. Third s"
-      // lastSentenceEnd:
-      // index 14: ". "
-      // index 31: ". "
-      // lastSentenceEnd = 31
-      // 31 > 32? No.
-      // So it will cut at 40.
-
-      const longText = 'This is a sentence. This is another sentence that is quite long.';
-      // maxTokens = 10 -> maxChars = 40
-      // truncated = "This is a sentence. This is another sent" (40 chars)
-      // lastSentenceEnd: ". " at index 18
-      // 18 > 32? No.
-      // Returns "This is a sentence. This is another sent\n...[truncated]"
-
+      // 10 tokens * 4 = 40 characters
+      // text length needs to be considered for testing boundary cases
       const textWithBoundary = 'Hello world. This is a test. Another sentence.';
       // maxTokens = 8 -> maxChars = 32
       // truncated = "Hello world. This is a test. Ano" (32 chars)
@@ -90,6 +88,7 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'AI response' }] } }],
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global.fetch as any).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
@@ -113,6 +112,7 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Success after retry' }] } }],
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global.fetch as any)
         .mockResolvedValueOnce({
           status: 429,
@@ -140,6 +140,7 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Success after 500' }] } }],
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global.fetch as any)
         .mockResolvedValueOnce({
           status: 500,
@@ -161,6 +162,7 @@ describe('ai-client utilities', () => {
     });
 
     it('should throw error after maximum retries', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global.fetch as any).mockResolvedValue({
         status: 429,
         statusText: 'Too Many Requests',
@@ -182,6 +184,7 @@ describe('ai-client utilities', () => {
     });
 
     it('should throw on non-retryable errors (e.g., 400)', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global.fetch as any).mockResolvedValue({
         status: 400,
         statusText: 'Bad Request',
