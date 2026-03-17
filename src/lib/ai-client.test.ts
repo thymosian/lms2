@@ -160,6 +160,26 @@ describe('ai-client utilities', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
+    it('should retry on fetch failed errors and eventually succeed', async () => {
+      const mockSuccessResponse = {
+        candidates: [{ content: { parts: [{ text: 'Success after fetch failed' }] } }],
+      };
+
+      (global.fetch as any)
+        .mockRejectedValueOnce(new Error('fetch failed: network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockSuccessResponse,
+        });
+
+      const callPromise = callVertexAI('test');
+      await vi.runAllTimersAsync();
+
+      const result = await callPromise;
+      expect(result).toBe('Success after fetch failed');
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
     it('should throw error after maximum retries', async () => {
       (global.fetch as any).mockResolvedValue({
         status: 429,
@@ -168,17 +188,26 @@ describe('ai-client utilities', () => {
         ok: false,
       });
 
-      const callPromise = callVertexAI('test');
+      const callPromise = callVertexAI('test').catch((err) => err);
 
       // Run all retries
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
 
-      await expect(callPromise).rejects.toThrow(
-        'Vertex AI 429 Too Many Requests: Rate limit exceeded',
-      );
+      const error = await callPromise;
+      expect(error).toBeInstanceOf(Error);
+      expect(error.message).toContain('Vertex AI 429 Too Many Requests: Rate limit exceeded');
       expect(global.fetch).toHaveBeenCalledTimes(5);
+    });
+
+    it('should throw immediately on unknown network errors (without fetch failed)', async () => {
+      (global.fetch as any).mockRejectedValueOnce(new Error('Unknown network issue'));
+
+      const callPromise = callVertexAI('test');
+
+      await expect(callPromise).rejects.toThrow('Unknown network issue');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
     it('should throw on non-retryable errors (e.g., 400)', async () => {
