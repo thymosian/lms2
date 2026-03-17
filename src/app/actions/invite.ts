@@ -37,67 +37,76 @@ export async function createInvites(
 
     if (!org) return { success: false, results: [], error: 'Organization not found' };
 
-    for (const email of emails) {
-      try {
-        // Check if user already exists
-        const existingUser = await prisma.user.findUnique({
-          where: { email },
-          include: { organization: true },
-        });
+    const invitePromises = emails.map(async (email): Promise<InviteResultItem> => {
+      // Check if user already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email },
+        include: { organization: true },
+      });
 
-        if (existingUser) {
-          if (existingUser.organizationId === organizationId) {
-            results.push({ email, status: 'exists', message: 'User is already a member.' });
-          } else {
-            // User exists but in another org or no org.
-            // Ideally we'd invite them to join *this* org, but for now just report they have an account.
-            results.push({
-              email,
-              status: 'exists',
-              message: 'User already has an account. Ask them to login.',
-            });
-          }
-          continue;
-        }
-
-        // Check if invite already pending
-        const existingInvite = await prisma.invite.findFirst({
-          where: { email, organizationId, status: 'pending' },
-        });
-
-        if (existingInvite) {
-          // Resend Email
-          const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/join/${existingInvite.token}`;
-          await sendInviteEmail(email, inviteLink, org.name, role);
-          results.push({ email, status: 'resent', message: 'Invitation resent.' });
-          continue;
-        }
-
-        const token = crypto.randomUUID();
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-        // Create Invite Record
-        await prisma.invite.create({
-          data: {
+      if (existingUser) {
+        if (existingUser.organizationId === organizationId) {
+          return { email, status: 'exists', message: 'User is already a member.' };
+        } else {
+          // User exists but in another org or no org.
+          // Ideally we'd invite them to join *this* org, but for now just report they have an account.
+          return {
             email,
-            token,
-            organizationId,
-            role,
-            expiresAt,
-            invitedBy: inviterId,
-            status: 'pending',
-          },
-        });
+            status: 'exists',
+            message: 'User already has an account. Ask them to login.',
+          };
+        }
+      }
 
-        // Send Email
-        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/join/${token}`;
+      // Check if invite already pending
+      const existingInvite = await prisma.invite.findFirst({
+        where: { email, organizationId, status: 'pending' },
+      });
+
+      if (existingInvite) {
+        // Resend Email
+        const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/join/${existingInvite.token}`;
         await sendInviteEmail(email, inviteLink, org.name, role);
+        return { email, status: 'resent', message: 'Invitation resent.' };
+      }
 
-        results.push({ email, status: 'sent', message: 'Invitation sent.' });
-      } catch (err: unknown) {
-        console.error(`Error processing invite for ${email}:`, err);
-        results.push({ email, status: 'error', message: 'Failed to process invitation.' });
+      const token = crypto.randomUUID();
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+      // Create Invite Record
+      await prisma.invite.create({
+        data: {
+          email,
+          token,
+          organizationId,
+          role,
+          expiresAt,
+          invitedBy: inviterId,
+          status: 'pending',
+        },
+      });
+
+      // Send Email
+      const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/join/${token}`;
+      await sendInviteEmail(email, inviteLink, org.name, role);
+
+      return { email, status: 'sent', message: 'Invitation sent.' };
+    });
+
+    const settledResults = await Promise.allSettled(invitePromises);
+
+    for (let i = 0; i < settledResults.length; i++) {
+      const result = settledResults[i];
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        console.error(`Error processing invite for ${emails[i]}:`, result.reason);
+        results.push({
+          email: emails[i],
+          status: 'error',
+          message: 'Failed to process invitation.',
+        });
       }
     }
 
