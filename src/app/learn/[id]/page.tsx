@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import DOMPurify from 'isomorphic-dompurify';
 import styles from '../../../components/courses/CoursePlayer.module.css';
 import QuizResults from '@/components/dashboard/training/QuizResults';
 
@@ -872,10 +873,12 @@ export default function LearnPage() {
                       </h3>
                       <div
                         dangerouslySetInnerHTML={{
-                          __html: (lesson.content || '')
-                            .replace(/&nbsp;/g, ' ')
-                            .replace(/<br\s*\/?>/gi, ' ')
-                            .replace(/\s+/g, ' '),
+                          __html: DOMPurify.sanitize(
+                            (lesson.content || '')
+                              .replace(/&nbsp;/g, ' ')
+                              .replace(/<br\s*\/?>/gi, ' ')
+                              .replace(/\s+/g, ' ')
+                          ),
                         }}
                       />
                       {idx < course.lessons.length - 1 && (

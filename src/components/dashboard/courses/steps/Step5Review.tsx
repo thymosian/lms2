@@ -13,6 +13,7 @@ import CourseSlide from '@/components/courses/CourseSlide';
 import CourseArticle from '@/components/courses/CourseArticle';
 import { Button } from '@/components/ui';
 
+import DOMPurify from 'isomorphic-dompurify';
 import {
   CourseWizardData,
   GeneratedCourse,
@@ -512,7 +513,7 @@ export default function Step5Review({
             <CourseArticle title={currentModule?.title || 'Untitled Module'}>
               <div
                 className={styles.articleBody}
-                dangerouslySetInnerHTML={{ __html: displayContent }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(displayContent) }}
               />
             </CourseArticle>
           )}
