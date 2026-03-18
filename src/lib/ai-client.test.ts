@@ -306,7 +306,6 @@ describe('ai-client utilities', () => {
       expect(result).toBe('Success after network error');
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
-    });
 
     it('should throw on non-retryable errors (e.g., 400)', async () => {
       (global.fetch as unknown as import('vitest').Mock).mockResolvedValue({
