@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { estimateTokens, truncateToContext, callVertexAI } from './ai-client';
 
@@ -227,16 +226,13 @@ describe('ai-client utilities', () => {
 
       // Run all retries while catching the error to prevent unhandled rejection
       const errorPromise = callPromise.catch((e) => e);
-
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
 
       const error = await errorPromise;
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(
-        'Vertex AI 429 Too Many Requests: Rate limit exceeded',
-      );
+      expect((error as Error).message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
       expect(global.fetch).toHaveBeenCalledTimes(5);
     });
 
