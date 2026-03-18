@@ -78,7 +78,7 @@ export default function AttestationModal({
         </div>
 
         <div className={styles.fieldGroup}>
-          <label className={styles.label}>Role</label>
+          <label className={styles.label}>Job Title</label>
           <input
             className={styles.input}
             value={userRole.charAt(0).toUpperCase() + userRole.slice(1)}
