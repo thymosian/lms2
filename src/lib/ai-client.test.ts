@@ -171,6 +171,7 @@ describe('ai-client utilities', () => {
       const callPromise = callVertexAI('test');
 
       // Run all retries
+      callPromise.catch(() => {});
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
