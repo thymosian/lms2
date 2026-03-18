@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import DOMPurify from 'isomorphic-dompurify';
 import styles from './CoursePlayer.module.css';
 import SlideContentFitter from '@/components/ui/SlideContentFitter';
 import { sanitizeHtml } from '@/lib/sanitize';
