@@ -4,7 +4,6 @@ import { auth as adminAuth } from '@/auth';
 import { auth as workerAuth } from '@/auth.worker';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-
 const submitQuizSchema = z.object({
   enrollmentId: z.string().min(1, 'Enrollment ID is required'),
   answers: z.array(
@@ -15,6 +14,7 @@ const submitQuizSchema = z.object({
   ),
   timeTaken: z.number().nullable().optional(),
 });
+
 
 interface QuizQuestionWithExplanation {
   id: string;
@@ -60,12 +60,23 @@ Return ONLY a JSON object mapping question numbers to explanations, like:
 {"1": "Explanation for Q1...", "2": "Explanation for Q2...", ...}
 No markdown, no extra text.`;
 
-    const projectId = process.env.GOOGLE_PROJECT_ID || 'theraptly-lms';
-    const location = process.env.GOOGLE_LOCATION || 'us-central1';
-    const modelId = 'gemini-2.5-flash-lite';
+    // Strictly validate variables to prevent SSRF
+    const envSchema = z.object({
+      projectId: z.string().regex(/^[a-zA-Z0-9-]+$/).min(1),
+      location: z.string().regex(/^[a-zA-Z0-9-]+$/).min(1),
+      modelId: z.string().regex(/^[a-zA-Z0-9.-]+$/).min(1),
+    });
+
+    const validatedVars = envSchema.parse({
+      projectId: process.env.GOOGLE_PROJECT_ID || 'theraptly-lms',
+      location: process.env.GOOGLE_LOCATION || 'us-central1',
+      modelId: 'gemini-2.5-flash-lite',
+    });
+
+    const url = `https://${validatedVars.location}-aiplatform.googleapis.com/v1/projects/${validatedVars.projectId}/locations/${validatedVars.location}/publishers/google/models/${validatedVars.modelId}:generateContent?key=${apiKey}`;
 
     const response = await fetch(
-      `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:generateContent?key=${apiKey}`,
+      url,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
