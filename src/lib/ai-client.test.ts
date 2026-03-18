@@ -237,6 +237,26 @@ describe('ai-client utilities', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
+    it('should retry on fetch failed errors and eventually succeed', async () => {
+      const mockSuccessResponse = {
+        candidates: [{ content: { parts: [{ text: 'Success after fetch failed' }] } }],
+      };
+
+      (global.fetch as any)
+        .mockRejectedValueOnce(new Error('fetch failed: network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockSuccessResponse,
+        });
+
+      const callPromise = callVertexAI('test');
+      await vi.runAllTimersAsync();
+
+      const result = await callPromise;
+      expect(result).toBe('Success after fetch failed');
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
     it('should throw error after maximum retries', async () => {
       (global.fetch as unknown as import('vitest').Mock).mockResolvedValue({
         status: 429,
@@ -285,6 +305,7 @@ describe('ai-client utilities', () => {
       const result = await callPromise;
       expect(result).toBe('Success after network error');
       expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
     });
 
     it('should throw on non-retryable errors (e.g., 400)', async () => {
