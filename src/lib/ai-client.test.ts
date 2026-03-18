@@ -145,7 +145,7 @@ describe('ai-client utilities', () => {
       (global.fetch as unknown as import('vitest').Mock).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
-      });
+      } as unknown as Response);
 
       const result = await callVertexAI('test prompt');
       expect(result).toBe('AI response');
@@ -171,11 +171,11 @@ describe('ai-client utilities', () => {
           statusText: 'Too Many Requests',
           text: async () => 'Rate limit exceeded',
           ok: false,
-        })
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        });
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
 
@@ -198,11 +198,11 @@ describe('ai-client utilities', () => {
           statusText: 'Internal Server Error',
           text: async () => 'Server error',
           ok: false,
-        })
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        });
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
       await vi.runAllTimersAsync();
@@ -218,9 +218,13 @@ describe('ai-client utilities', () => {
         statusText: 'Too Many Requests',
         text: async () => 'Rate limit exceeded',
         ok: false,
-      });
+      } as unknown as Response);
 
-      const callPromise = callVertexAI('test');
+      let errorCaught = false;
+      const callPromise = callVertexAI('test').catch((e) => {
+        errorCaught = true;
+        expect(e.message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
+      });
 
       // Run all retries while catching the error to prevent unhandled rejection
       const errorPromise = callPromise.catch((e) => e);
@@ -262,7 +266,7 @@ describe('ai-client utilities', () => {
         statusText: 'Bad Request',
         text: async () => 'Invalid prompt',
         ok: false,
-      });
+      } as unknown as Response);
 
       await expect(callVertexAI('test')).rejects.toThrow(
         'Vertex AI 400 Bad Request: Invalid prompt',
@@ -276,6 +280,14 @@ describe('ai-client utilities', () => {
       );
 
       await expect(callVertexAI('test')).rejects.toThrow('SyntaxError: Unexpected token');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should throw immediately on non-retryable fetch errors', async () => {
+      const nonRetryableError = new TypeError('Network request failed');
+      (global.fetch as unknown as import('vitest').Mock).mockRejectedValueOnce(nonRetryableError);
+
+      await expect(callVertexAI('test')).rejects.toThrow('Network request failed');
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
