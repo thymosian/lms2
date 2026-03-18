@@ -311,9 +311,9 @@ export default function CourseWizard() {
           quizTitle: result.quizTitle || prev.quizTitle,
         }));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Upload/Analysis Failed:', err);
-      setUploadError(err.message || 'Upload failed. Please try again.');
+      setUploadError((err as Error).message || 'Upload failed. Please try again.');
     } finally {
       setTimeout(() => {
         setIsAnalyzing(false);

@@ -169,8 +169,8 @@ describe('ai-client utilities', () => {
       });
 
       const callPromise = callVertexAI('test');
+      callPromise.catch(() => {}); // prevent UnhandledPromiseRejection
 
-      // Run all retries
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
