@@ -64,6 +64,31 @@ describe('ai-client utilities', () => {
       expect(truncateToContext(text, 10)).toBe(text);
     });
 
+    it('should return original text if exactly at token limit', () => {
+      const text = 'A'.repeat(40);
+      expect(truncateToContext(text, 10)).toBe(text);
+    });
+
+    it('should return original text if shorter than token limit', () => {
+      const text = 'A'.repeat(39);
+      expect(truncateToContext(text, 10)).toBe(text);
+    });
+
+    it('should return empty string if input is empty', () => {
+      expect(truncateToContext('', 10)).toBe('');
+    });
+
+    it('should truncate to 0 characters if maxTokens is 0 or negative', () => {
+      const text = 'Some text here.';
+      expect(truncateToContext(text, 0)).toBe('\n...[truncated]');
+      expect(truncateToContext(text, -5)).toBe('\n...[truncated]');
+    });
+
+    it('should truncate text with only whitespace properly', () => {
+      const text = ' '.repeat(50);
+      expect(truncateToContext(text, 10)).toBe(' '.repeat(40) + '\n...[truncated]');
+    });
+
     it('should truncate at sentence boundary if possible', () => {
       const textWithBoundary = 'Hello world. This is a test. Another sentence.';
       // maxTokens = 8 -> maxChars = 32
@@ -227,12 +252,14 @@ describe('ai-client utilities', () => {
       });
 
       // Run all retries while catching the error to prevent unhandled rejection
-      const errorPromise = callPromise.catch((e) => e);
+      // during the simulated timer advancement.
+      const caughtPromise = callPromise.catch((e) => e);
+
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
 
-      const error = await errorPromise;
+      const error = await caughtPromise;
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
       expect(global.fetch).toHaveBeenCalledTimes(5);
