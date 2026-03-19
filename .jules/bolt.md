@@ -9,3 +9,7 @@
 ## 2025-03-17 - [Unused Code in DashboardCharts.tsx]
 **Learning:** During a code health task to remove an unused `Button` import in `src/components/dashboard/DashboardCharts.tsx` (which had already been removed), it was noticed that the `COLORS` object and `truncateLabel` function are currently defined but unused in the file.
 **Action:** Log a future task to review, test, and potentially remove the `COLORS` object and `truncateLabel` function in `src/components/dashboard/DashboardCharts.tsx` to improve code maintainability.
+
+## 2025-03-22 - [Merge Dashboard Data Queries]
+**Learning:** Found an anti-pattern in `src/app/dashboard/(main)/page.tsx` and `src/app/dashboard/(main)/training/page.tsx` where both `getCourses()` and `getDashboardStats()` were called in parallel. Both queried the database for all `course` objects and associated `enrollments` + `lessons` using `prisma.course.findMany()`, resulting in a redundant database request (Prisma N+1 / redundant query anti-pattern).
+**Action:** Replaced both calls with a single `getDashboardData()` query that returns `{ courses, stats }` in one pass, slicing database queries in half for dashboard rendering.
