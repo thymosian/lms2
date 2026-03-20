@@ -1,5 +1,6 @@
 'use server';
 
+import { cache } from 'react';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 
@@ -34,6 +35,17 @@ export interface AuditorStaffRow {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// ⚡ Bolt: Cache this query so it only hits the database once per request lifecycle
+// when multiple stats functions are called in parallel on the dashboard.
+const getOrgUserIds = cache(async (organizationId: string) => {
+  return prisma.user
+    .findMany({
+      where: { organizationId },
+      select: { id: true },
+    })
+    .then((users) => users.map((u) => u.id));
+});
 
 async function requireAdminSession() {
   const session = await auth();
@@ -75,12 +87,7 @@ export async function getAuditorOverviewStats(): Promise<AuditorOverviewStats> {
   const { organizationId } = await requireAdminSession();
 
   // Courses created within this org (by any admin/user in the org)
-  const orgUserIds = await prisma.user
-    .findMany({
-      where: { organizationId },
-      select: { id: true },
-    })
-    .then((users) => users.map((u) => u.id));
+  const orgUserIds = await getOrgUserIds(organizationId);
 
   const [totalCourses, enrollmentStats, staffCount] = await Promise.all([
     // Count published courses created by org users
@@ -127,12 +134,7 @@ export async function getAuditorOverviewStats(): Promise<AuditorOverviewStats> {
 export async function getAuditorCourses(search?: string): Promise<AuditorCourseRow[]> {
   const { organizationId } = await requireAdminSession();
 
-  const orgUserIds = await prisma.user
-    .findMany({
-      where: { organizationId },
-      select: { id: true },
-    })
-    .then((users) => users.map((u) => u.id));
+  const orgUserIds = await getOrgUserIds(organizationId);
 
   const courses = await prisma.course.findMany({
     where: {
@@ -231,9 +233,7 @@ export async function getAuditorStaff(search?: string): Promise<AuditorStaffRow[
 export async function generateAuditorPackCsv(): Promise<string> {
   const { organizationId } = await requireAdminSession();
 
-  const orgUserIds = await prisma.user
-    .findMany({ where: { organizationId }, select: { id: true } })
-    .then((u) => u.map((x) => x.id));
+  const orgUserIds = await getOrgUserIds(organizationId);
 
   const enrollments = await prisma.enrollment.findMany({
     where: { userId: { in: orgUserIds } },
