@@ -68,6 +68,11 @@ export const Select = ({
     >
       <button
         type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-disabled={disabled}
+        aria-controls={`${name || 'select'}-dropdown`}
         className={`${styles.trigger} ${size === 'sm' ? styles.triggerSmall : ''} ${isOpen ? styles.triggerOpen : ''}`}
         style={error ? { borderColor: '#E53E3E' } : {}} // Inline style for error border
         onClick={() => !disabled && setIsOpen(!isOpen)}
@@ -96,12 +101,16 @@ export const Select = ({
 
       {isOpen && (
         <div
+          id={`${name || 'select'}-dropdown`}
+          role="listbox"
           className={`${styles.dropdown} ${direction === 'up' ? styles.dropdownUp : ''} ${dropdownClassName}`}
         >
           {options.map((option) => (
             <button
               key={option.value}
               type="button"
+              role="option"
+              aria-selected={option.value === value}
               className={`${styles.option} ${option.value === value ? styles.selected : ''}`}
               onClick={() => handleSelect(option.value)}
             >
