@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { estimateTokens, truncateToContext, callVertexAI } from './ai-client';
 
@@ -107,9 +106,6 @@ describe('ai-client utilities', () => {
     });
 
     it('should truncate at sentence boundary if possible', () => {
-      // 10 tokens * 4 = 40 characters
-      // text length needs to be considered for testing boundary cases
-
       const textWithBoundary = 'Hello world. This is a test. Another sentence.';
       // maxTokens = 8 -> maxChars = 32
       // truncated = "Hello world. This is a test. Ano" (32 chars)
@@ -190,7 +186,7 @@ describe('ai-client utilities', () => {
       vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
-      } as any);
+      } as unknown as Response);
 
       const result = await callVertexAI('test prompt');
       expect(result).toBe('AI response');
@@ -216,11 +212,11 @@ describe('ai-client utilities', () => {
           statusText: 'Too Many Requests',
           text: async () => 'Rate limit exceeded',
           ok: false,
-        } as any)
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        } as any);
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
 
@@ -243,11 +239,11 @@ describe('ai-client utilities', () => {
           statusText: 'Internal Server Error',
           text: async () => 'Server error',
           ok: false,
-        } as any)
+        } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        } as any);
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
       await vi.runAllTimersAsync();
@@ -262,7 +258,7 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Success after fetch failed' }] } }],
       };
 
-      (global.fetch as any)
+      (global.fetch as unknown as import('vitest').Mock)
         .mockRejectedValueOnce(new Error('fetch failed: network error'))
         .mockResolvedValueOnce({
           ok: true,
@@ -283,19 +279,18 @@ describe('ai-client utilities', () => {
         statusText: 'Too Many Requests',
         text: async () => 'Rate limit exceeded',
         ok: false,
-      } as any);
+      } as unknown as Response);
 
-      const callPromise = callVertexAI('test').catch((e) => e);
-
-      // Run all retries while catching the error to prevent unhandled rejection
-      const errorPromise = callPromise.catch((e) => e);
+      const callPromise = callVertexAI('test').catch((e) => {
+        expect(e.message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
+        return e;
+      });
 
       for (let i = 0; i < 5; i++) {
         await vi.runAllTimersAsync();
       }
 
       const error = await callPromise;
-
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe('Vertex AI 429 Too Many Requests: Rate limit exceeded');
       expect(global.fetch).toHaveBeenCalledTimes(5);
@@ -311,7 +306,7 @@ describe('ai-client utilities', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        } as any);
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test');
 
@@ -323,7 +318,9 @@ describe('ai-client utilities', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
     it('should throw immediately on unknown network errors (without fetch failed)', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Unknown network issue'));
+      (global.fetch as unknown as import('vitest').Mock).mockRejectedValueOnce(
+        new Error('Unknown network issue'),
+      );
 
       const callPromise = callVertexAI('test');
 
@@ -337,7 +334,7 @@ describe('ai-client utilities', () => {
         statusText: 'Bad Request',
         text: async () => 'Invalid prompt',
         ok: false,
-      } as any);
+      } as unknown as Response);
 
       await expect(callVertexAI('test')).rejects.toThrow(
         'Vertex AI 400 Bad Request: Invalid prompt',
@@ -362,7 +359,7 @@ describe('ai-client utilities', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockSuccessResponse,
-        } as any);
+        } as unknown as Response);
 
       const callPromise = callVertexAI('test network error');
       await vi.runAllTimersAsync();
@@ -377,10 +374,10 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [] } }],
       };
 
-      vi.mocked(global.fetch).mockResolvedValue({
+      (global.fetch as unknown as import('vitest').Mock).mockResolvedValue({
         ok: true,
         json: async () => mockEmptyResponse,
-      } as any);
+      });
 
       await expect(callVertexAI('test empty')).rejects.toThrow(
         'Vertex AI returned no content in response.',
@@ -393,10 +390,10 @@ describe('ai-client utilities', () => {
         candidates: [{ content: { parts: [{ text: 'Config test response' }] } }],
       };
 
-      vi.mocked(global.fetch).mockResolvedValue({
+      (global.fetch as unknown as import('vitest').Mock).mockResolvedValue({
         ok: true,
         json: async () => mockSuccessResponse,
-      } as any);
+      });
 
       const config = {
         temperature: 0.2,
@@ -415,7 +412,7 @@ describe('ai-client utilities', () => {
       );
 
       // Verify maxOutputTokens is included in the body
-      const fetchCall = (global.fetch as any).mock.calls[0];
+      const fetchCall = (global.fetch as unknown as import('vitest').Mock).mock.calls[0];
       const fetchBody = JSON.parse(fetchCall[1].body);
       expect(fetchBody.generationConfig.maxOutputTokens).toBe(1000);
       expect(fetchBody.generationConfig.temperature).toBe(0.2);

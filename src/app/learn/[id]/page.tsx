@@ -72,7 +72,6 @@ interface UserData {
   organizationName?: string;
   email: string;
   jobTitle: string;
-
 }
 
 export default function LearnPage() {
@@ -887,7 +886,7 @@ export default function LearnPage() {
                             (lesson.content || '')
                               .replace(/&nbsp;/g, ' ')
                               .replace(/<br\s*\/?>/gi, ' ')
-                              .replace(/\s+/g, ' ')
+                              .replace(/\s+/g, ' '),
                           ),
                         }}
                       />
