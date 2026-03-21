@@ -98,12 +98,15 @@ export async function deleteLesson(lessonId: string) {
     orderBy: { order: 'asc' },
   });
 
-  for (let i = 0; i < remainingLessons.length; i++) {
-    await prisma.lesson.update({
-      where: { id: remainingLessons[i].id },
-      data: { order: i + 1 },
-    });
-  }
+  // ⚡ Bolt: Use $transaction to avoid N+1 queries when updating lesson orders
+  await prisma.$transaction(
+    remainingLessons.map((lesson, i) =>
+      prisma.lesson.update({
+        where: { id: lesson.id },
+        data: { order: i + 1 },
+      }),
+    ),
+  );
 
   revalidatePath(`/dashboard/training/${existing.courseId}`);
   return { success: true };

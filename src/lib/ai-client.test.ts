@@ -86,26 +86,33 @@ describe('ai-client utilities', () => {
     });
 
     it('should return text on successful response', async () => {
-      const mockResponse = {
-        candidates: [{ content: { parts: [{ text: 'AI response' }] } }],
-      };
+      // Create a temporary mock API key specifically to override the one in process.env
+      const originalKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY = 'test-key';
+      try {
+        const mockResponse = {
+          candidates: [{ content: { parts: [{ text: 'AI response' }] } }],
+        };
 
-      (global.fetch as unknown).mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
+        (global.fetch as unknown).mockResolvedValue({
+          ok: true,
+          json: async () => mockResponse,
+        });
 
-      const result = await callVertexAI('test prompt');
-      expect(result).toBe('AI response');
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'publishers/google/models/gemini-2.5-flash-lite:generateContent?key=test-key',
-        ),
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.stringContaining('test prompt'),
-        }),
-      );
+        const result = await callVertexAI('test prompt');
+        expect(result).toBe('AI response');
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'publishers/google/models/gemini-2.5-flash-lite:generateContent?key=test-key',
+          ),
+          expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('test prompt'),
+          }),
+        );
+      } finally {
+        process.env.NEXT_PUBLIC_GEMINI_API_KEY = originalKey;
+      }
     });
 
     it('should retry on 429 errors and eventually succeed', async () => {
