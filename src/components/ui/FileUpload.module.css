@@ -36,6 +36,12 @@
   background-color: #fff5f5;
 }
 
+.dropzone:focus-visible {
+  outline: none;
+  border-color: #4c6ef5;
+  box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.2);
+}
+
 .hiddenInput {
   display: none;
 }
