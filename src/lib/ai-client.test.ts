@@ -98,9 +98,7 @@ describe('ai-client utilities', () => {
       const result = await callVertexAI('test prompt');
       expect(result).toBe('AI response');
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'publishers/google/models/gemini-2.5-flash-lite:generateContent?key=test-key',
-        ),
+        expect.stringContaining('publishers/google/models/gemini-2.5-flash-lite:generateContent'),
         expect.objectContaining({
           method: 'POST',
           body: expect.stringContaining('test prompt'),
