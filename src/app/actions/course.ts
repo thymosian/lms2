@@ -98,10 +98,7 @@ export async function getCourseById(courseId: string): Promise<CourseWithRelatio
 }
 
 // Create a new course
-export async function createCourse(data: {
-  title: string;
-  description?: string;
-}) {
+export async function createCourse(data: { title: string; description?: string }) {
   const session = await resolveSession();
   if (!session?.user?.id) {
     throw new Error('Unauthorized');
@@ -313,7 +310,8 @@ export async function getDashboardData() {
       coursePerformance, // New Field
       trainingCoverage: {
         completed: totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 0,
-        inProgress: totalEnrollments > 0 ? Math.round((inProgressCount / totalEnrollments) * 100) : 0,
+        inProgress:
+          totalEnrollments > 0 ? Math.round((inProgressCount / totalEnrollments) * 100) : 0,
         notStarted: totalEnrollments > 0 ? Math.round((enrolledCount / totalEnrollments) * 100) : 0,
         totalStaff: totalStaffAssigned, // Add total staff for donut label
       },
