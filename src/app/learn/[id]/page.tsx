@@ -407,7 +407,14 @@ export default function LearnPage() {
             correct: 0,
             wrong: 0,
             time: 0,
-            questions: [],
+            questions: [] as {
+              id: string;
+              text: string;
+              options: { id: string; text: string }[];
+              selectedAnswer: string;
+              correctAnswer: string;
+              explanation: string;
+            }[],
           };
           setQuizResults(resultsData);
           if (data.course.lessons) setActiveIndex(data.course.lessons.length);
