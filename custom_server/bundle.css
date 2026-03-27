@@ -1,15 +1,14 @@
-.container {
+/* ../src/components/ui/FileUpload.module.css */
+.FileUpload_container {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-
-.dropzone {
+.FileUpload_dropzone {
   border: 1px dashed #e2e8f0;
   border-radius: 12px;
   padding: 40px;
   background-color: #f8fafc;
-  /* Slightly lighter gray */
   transition: all 0.2s ease;
   cursor: pointer;
   display: flex;
@@ -17,44 +16,35 @@
   justify-content: center;
   min-height: 200px;
 }
-
-.dropzone:hover {
+.FileUpload_dropzone:hover {
   border-color: #4c6ef5;
   background-color: #f4f7fe;
-  /* Very light blue tint on hover */
 }
-
-.dropzone.active {
+.FileUpload_dropzone.FileUpload_active {
   border-color: #4c6ef5;
   background-color: #f4f7fe;
   transform: scale(0.995);
-  /* Subtle press effect */
 }
-
-.dropzone:focus-visible {
+.FileUpload_dropzone:focus-visible {
   outline: none;
   border-color: #4c6ef5;
   box-shadow: 0 0 0 3px rgba(76, 110, 245, 0.2);
 }
-
-.dropzone.error {
+.FileUpload_dropzone.FileUpload_error {
   border-color: #e53e3e;
   background-color: #fff5f5;
 }
-
-.hiddenInput {
+.FileUpload_hiddenInput {
   display: none;
 }
-
-.content {
+.FileUpload_content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 12px;
   text-align: center;
 }
-
-.iconWrapper {
+.FileUpload_iconWrapper {
   width: 48px;
   height: 48px;
   background-color: #edf2f7;
@@ -65,25 +55,21 @@
   color: #4a5568;
   margin-bottom: 8px;
 }
-
-.text {
+.FileUpload_text {
   font-size: 14px;
   color: #4a5568;
   font-weight: 500;
 }
-
-.link {
+.FileUpload_link {
   color: #4c6ef5;
   text-decoration: underline;
   cursor: pointer;
 }
-
-.subtext {
+.FileUpload_subtext {
   font-size: 12px;
   color: #a0aec0;
 }
-
-.errorMessage {
+.FileUpload_errorMessage {
   font-size: 12px;
   color: #e53e3e;
   margin-left: 4px;

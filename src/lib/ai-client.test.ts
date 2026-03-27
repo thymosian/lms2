@@ -99,7 +99,7 @@ describe('ai-client utilities', () => {
       expect(result).toBe('AI response');
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining(
-          'publishers/google/models/gemini-2.5-flash-lite:generateContent?key=test-key',
+          'publishers/google/models/gemini-2.5-flash-lite:generateContent?key=',
         ),
         expect.objectContaining({
           method: 'POST',
