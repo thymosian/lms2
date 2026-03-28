@@ -11,17 +11,13 @@ export default async function ProfilePage() {
     redirect('/login');
   }
 
-  // Fetch profile
-  const profile = await prisma.profile.findUnique({
-    where: { id: session.user.id },
-  });
-
-  // Fetch user with organization
+  // Fetch user with profile and organization to avoid N+1 queries
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    include: { organization: true },
+    include: { profile: true, organization: true },
   });
 
+  const profile = user?.profile;
   const role = user?.role || 'worker';
 
   console.log('ProfilePage Session:', session?.user?.id);

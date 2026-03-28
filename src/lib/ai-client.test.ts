@@ -70,7 +70,7 @@ describe('ai-client utilities', () => {
     beforeEach(() => {
       vi.stubGlobal('fetch', vi.fn());
       vi.useFakeTimers();
-      process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key' };
+      process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key', NEXT_PUBLIC_GEMINI_API_KEY: 'test-key' };
     });
 
     afterEach(() => {
@@ -86,6 +86,7 @@ describe('ai-client utilities', () => {
     });
 
     it('should return text on successful response', async () => {
+      process.env.GEMINI_API_KEY = 'test-key';
       const mockResponse = {
         candidates: [{ content: { parts: [{ text: 'AI response' }] } }],
       };
