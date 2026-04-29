@@ -28,6 +28,13 @@ LMS is built on a modern, scalable stack:
 
 ---
 
+
+
+print dkr
+
+
+
+
 ## 🚀 Getting Started
 
 ### 📋 Prerequisites
@@ -37,6 +44,10 @@ LMS is built on a modern, scalable stack:
 - **Google Cloud Platform**: Active project with Vertex AI API enabled (for AI features).
 
 ### 📥 Installation
+
+
+
+
 
 ```bash
 # Clone the repository
