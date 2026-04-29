@@ -84,6 +84,12 @@ node scripts/seed-courses.js
 
 ---
 
+
+
+
+
+
+
 ## 🤝 Contribution
 
 We welcome contributions! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
