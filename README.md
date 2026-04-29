@@ -4,6 +4,7 @@ LMS is a sophisticated, enterprise-ready Learning Management System (LMS) design
 
 ---
 
+
 ## 🏗 Architecture Overview
 
 LMS is built on a modern, scalable stack:
