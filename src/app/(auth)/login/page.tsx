@@ -49,7 +49,7 @@ function LoginForm() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if ((formData.password || '').length < 6) {
+    } else if ((formData.password || '').length < 8) {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
@@ -66,7 +66,6 @@ function LoginForm() {
     if (!isValid) return;
 
     setErrors({});
-    // Construct FormData manually
     const form = new FormData();
     form.append('email', formData.email);
     form.append('password', formData.password);
@@ -80,7 +79,6 @@ function LoginForm() {
   useEffect(() => {
     console.log('[Login Client] Action state changed:', state);
     if (state?.redirect) {
-      // Auto-route to the correct login page for their role
       router.push(state.redirect);
     } else if (state?.success) {
       console.log('[Login Client] Success! Redirecting to /dashboard');
@@ -285,14 +283,12 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className={styles.container}>
-      {/* Left Side - Form */}
       <div className={styles.formSection}>
         <Suspense fallback={<div>Loading...</div>}>
           <LoginForm />
         </Suspense>
       </div>
 
-      {/* Right Side - Hero Image */}
       <div className={styles.heroSection}>
         <Image
           src="/images/login-bg.png"
@@ -303,7 +299,6 @@ export default function LoginPage() {
           quality={100}
         />
 
-        {/* Overlay Content */}
         <div className={styles.heroOverlay}>
           <div className={styles.heroTextContent}>
             <h2 className={styles.heroTitle}>Audit-ready training, built from your policies</h2>
