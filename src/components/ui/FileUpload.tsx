@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, DragEvent, ChangeEvent } from 'react';
+import React, { useRef, useState, DragEvent, ChangeEvent, KeyboardEvent } from 'react';
 import styles from './FileUpload.module.css';
 
 interface FileUploadProps {
@@ -66,6 +66,13 @@ export default function FileUpload({
     fileInputRef.current?.click();
   };
 
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div
@@ -75,6 +82,10 @@ export default function FileUpload({
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={handleClick} // Make the whole area clickable for better UX
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={0}
+        aria-label="File upload dropzone"
       >
         <input
           type="file"

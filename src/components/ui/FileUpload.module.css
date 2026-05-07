@@ -31,6 +31,12 @@
   /* Subtle press effect */
 }
 
+.dropzone:focus-visible {
+  outline: none;
+  border-color: #2d4ddd;
+  box-shadow: 0 0 0 3px rgba(45, 77, 221, 0.1);
+}
+
 .dropzone.error {
   border-color: #e53e3e;
   background-color: #fff5f5;
