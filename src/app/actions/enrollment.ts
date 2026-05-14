@@ -79,113 +79,140 @@ export async function enrollUsers(courseId: string, emails: string[]) {
   const crypto = await import('crypto');
   const { sendCourseInviteEmail, sendCourseEnrollmentEmail } = await import('@/lib/email');
 
-  for (const email of emails) {
-    const normalizedEmail = email.toLowerCase().trim();
+  // 1. Validate and deduplicate emails
+  const validEmails = Array.from(
+    new Set(
+      emails.map((e) => e.toLowerCase().trim()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+    ),
+  );
 
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      results.failed.push(email);
-      continue;
-    }
+  const invalidEmails = emails.filter((e) => !validEmails.includes(e.toLowerCase().trim()));
+  results.failed.push(...invalidEmails);
 
-    // Find user by email
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
-      include: { profile: true },
-    });
+  if (validEmails.length === 0) {
+    return results;
+  }
 
-    // If user not found, create a new one with invite
-    if (!user) {
-      try {
-        // Generate temporary password
-        const tempPassword = crypto.randomBytes(8).toString('hex');
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
+  // 2. Fetch all existing users in a single query
+  const existingUsers = await prisma.user.findMany({
+    where: { email: { in: validEmails } },
+    include: { profile: true },
+  });
 
-        // Create new user
-        const newUser = await prisma.user.create({
-          data: {
-            email: normalizedEmail,
-            password: hashedPassword,
-            role: 'worker',
-            emailVerified: true,
-            organizationId: currentUser?.organizationId || null,
-          },
-        });
+  const existingEmails = new Set(existingUsers.map((u) => u.email));
+  const newEmails = validEmails.filter((email) => !existingEmails.has(email));
 
-        user = { ...newUser, profile: null };
+  const allUsers = [...existingUsers];
+  const newInvitedUsers: { email: string; tempPass: string }[] = [];
 
-        // Send invite email with credentials
-        try {
-          await sendCourseInviteEmail(
-            normalizedEmail,
-            tempPassword,
-            course.title,
-            currentUser?.organization?.name || 'Your Organization',
-          );
-          results.newInvited.push(email);
-        } catch (emailErr) {
-          console.error(`Failed to send invite email to ${email}:`, emailErr);
-          results.newInvited.push(email);
-        }
-      } catch (createErr) {
-        console.error(`Failed to create user for ${email}:`, createErr);
-        results.failed.push(email);
-        continue;
-      }
-    }
-
-    if (!user) continue;
-
-    // Check if already enrolled
-    // Check both unique constraint and startedAt to handle re-enrollment logic if needed
-    const existing = await prisma.enrollment.findFirst({
-      where: {
-        userId: user.id,
-        courseId: courseId,
-      },
-    });
-
-    if (existing) {
-      if (!results.newInvited.includes(email)) {
-        results.alreadyEnrolled.push(email);
-      }
-      continue;
-    }
-
-    // Create enrollment
-    await prisma.enrollment.create({
-      data: {
-        userId: user.id,
-        courseId: courseId,
-        status: 'enrolled',
-        progress: 0,
-      },
-    });
-
-    // Notify the worker in-app
-    await createNotification({
-      userId: user.id,
-      type: 'COURSE_ASSIGNED',
-      title: 'New Course Assigned',
-      message: `You have been assigned a new course: ${course.title}`,
-      linkUrl: `/worker/trainings`,
-      metadata: { courseId },
-    });
-
-    // Send enrollment notification email to existing user
+  // 3. Create new users in a loop since we need to generate random passwords and hash them
+  // (We could batch hash, but creating them individually here ensures we map passwords correctly)
+  for (const email of newEmails) {
     try {
-      await sendCourseEnrollmentEmail(
-        normalizedEmail,
-        user.profile?.fullName || 'there',
-        course.title,
-        currentUser?.organization?.name || 'Your Organization',
-      );
-    } catch (emailErr) {
-      console.error(`Failed to send enrollment email to ${email}:`, emailErr);
+      const tempPassword = crypto.randomBytes(8).toString('hex');
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      const newUser = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          role: 'worker',
+          emailVerified: true,
+          organizationId: currentUser?.organizationId || null,
+        },
+      });
+      allUsers.push({ ...newUser, profile: null });
+      newInvitedUsers.push({ email, tempPass: tempPassword });
+      results.newInvited.push(email);
+    } catch (createErr) {
+      console.error(`Failed to create user for ${email}:`, createErr);
+      results.failed.push(email);
+    }
+  }
+
+  // 4. Send invite emails concurrently using Promise.allSettled
+  await Promise.allSettled(
+    newInvitedUsers.map(async ({ email, tempPass }) => {
+      try {
+        await sendCourseInviteEmail(
+          email,
+          tempPass,
+          course.title,
+          currentUser?.organization?.name || 'Your Organization',
+        );
+      } catch (err) {
+        console.error(`Failed to send invite email to ${email}:`, err);
+      }
+    }),
+  );
+
+  const userIds = allUsers.map((u) => u.id);
+
+  if (userIds.length > 0) {
+    // 5. Fetch existing enrollments in a single query
+    const existingEnrollments = await prisma.enrollment.findMany({
+      where: {
+        courseId,
+        userId: { in: userIds },
+      },
+      select: { userId: true },
+    });
+
+    const enrolledUserIds = new Set(existingEnrollments.map((e) => e.userId));
+
+    const usersToEnroll = allUsers.filter((u) => !enrolledUserIds.has(u.id));
+    const alreadyEnrolledUsers = allUsers.filter((u) => enrolledUserIds.has(u.id));
+
+    // Record already enrolled (if they weren't just invited)
+    for (const u of alreadyEnrolledUsers) {
+      if (!results.newInvited.includes(u.email)) {
+        results.alreadyEnrolled.push(u.email);
+      }
     }
 
-    if (!results.newInvited.includes(email)) {
-      results.success.push(email);
+    if (usersToEnroll.length > 0) {
+      // 6. Bulk create new enrollments
+      await prisma.enrollment.createMany({
+        data: usersToEnroll.map((u) => ({
+          userId: u.id,
+          courseId,
+          status: 'enrolled',
+          progress: 0,
+        })),
+        skipDuplicates: true,
+      });
+
+      // 7. Send notifications and enrollment emails concurrently
+      const notificationPromises = usersToEnroll.map(async (user) => {
+        try {
+          await createNotification({
+            userId: user.id,
+            type: 'COURSE_ASSIGNED',
+            title: 'New Course Assigned',
+            message: `You have been assigned a new course: ${course.title}`,
+            linkUrl: `/worker/trainings`,
+            metadata: { courseId },
+          });
+        } catch (err) {
+          console.error(`Failed to create notification for ${user.email}`, err);
+        }
+
+        if (!results.newInvited.includes(user.email)) {
+          try {
+            await sendCourseEnrollmentEmail(
+              user.email,
+              user.profile?.fullName || 'there',
+              course.title,
+              currentUser?.organization?.name || 'Your Organization',
+            );
+            results.success.push(user.email);
+          } catch (err) {
+            console.error(`Failed to send enrollment email to ${user.email}:`, err);
+          }
+        }
+      });
+
+      await Promise.allSettled(notificationPromises);
     }
   }
 
