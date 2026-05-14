@@ -15,23 +15,21 @@ export default async function BillingPageRoute() {
     redirect('/login');
   }
 
-  // Server-side admin gate — redirect non-admins to dashboard
+  // Server-side admin gate and fetch org staff count in a single query
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, organizationId: true },
+    select: {
+      role: true,
+      organizationId: true,
+      organization: {
+        select: { staffCount: true },
+      },
+    },
   });
 
   if (!user || user.role !== 'admin') {
     redirect('/dashboard');
   }
 
-  // Fetch org staff count for plan restriction logic
-  const organization = user.organizationId
-    ? await prisma.organization.findUnique({
-        where: { id: user.organizationId },
-        select: { staffCount: true },
-      })
-    : null;
-
-  return <BillingPage staffCount={organization?.staffCount ?? null} />;
+  return <BillingPage staffCount={user.organization?.staffCount ?? null} />;
 }
