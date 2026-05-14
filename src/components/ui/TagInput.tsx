@@ -117,6 +117,7 @@ export default function TagInput({ value, onChange, placeholder, validate, error
                 removeTag(index);
               }}
               className={styles.removeButton}
+              aria-label={`Remove ${tag}`}
             >
               <svg
                 width="14"
