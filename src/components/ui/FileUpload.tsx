@@ -66,15 +66,26 @@ export default function FileUpload({
     fileInputRef.current?.click();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    }
+  };
+
   return (
     <div className={styles.container}>
       <div
+        role="button"
+        tabIndex={0}
         className={`${styles.dropzone} ${isDragging ? styles.active : ''} ${error ? styles.error : ''}`}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
         onClick={handleClick} // Make the whole area clickable for better UX
+        onKeyDown={handleKeyDown}
+        aria-label="File upload dropzone"
       >
         <input
           type="file"
