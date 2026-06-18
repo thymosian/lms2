@@ -70,7 +70,7 @@ describe('ai-client utilities', () => {
     beforeEach(() => {
       vi.stubGlobal('fetch', vi.fn());
       vi.useFakeTimers();
-      process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key' };
+      process.env = { ...originalEnv, GEMINI_API_KEY: 'test-key', NEXT_PUBLIC_GEMINI_API_KEY: 'test-key' };
     });
 
     afterEach(() => {

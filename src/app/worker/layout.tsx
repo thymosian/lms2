@@ -12,19 +12,17 @@ export default async function WorkerLayout({ children }: { children: React.React
     redirect('/login');
   }
 
-  // Fetch profile for full name
-  const profile = await prisma.profile.findUnique({
-    where: { id: session.user.id },
-    select: { fullName: true },
-  });
-
-  // Fetch fresh user data
+  // ⚡ Bolt: Fetch user data and profile in a single query to prevent redundant DB calls per page load
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { organizationId: true, role: true },
+    select: {
+      organizationId: true,
+      role: true,
+      profile: { select: { fullName: true } }
+    },
   });
 
-  const fullName = profile?.fullName || session.user.name || session.user.email || 'User';
+  const fullName = user?.profile?.fullName || session.user.name || session.user.email || 'User';
   const role = user?.role || session.user.role;
   console.log('[WorkerLayout] Rendering for user:', session.user.email, 'Role:', role);
   const organizationId = user?.organizationId;

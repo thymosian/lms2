@@ -13,20 +13,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect('/login');
   }
 
-  // Fetch profile role. Note: We use findUnique on email since we added @unique to Profile.email
-  // Or we use id if we set user.id in session (which we did in auth.ts callbacks)
-  const profile = await prisma.profile.findUnique({
-    where: { id: session.user.id },
-    select: { fullName: true },
-  });
-
-  // Fetch fresh user data from DB to get current organizationId (session may be stale after onboarding)
+  // ⚡ Bolt: Fetch user data and profile in a single query to prevent redundant DB calls per page load
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { organizationId: true, role: true },
+    select: {
+      organizationId: true,
+      role: true,
+      profile: { select: { fullName: true } }
+    },
   });
 
-  const fullName = profile?.fullName || session.user.name || session.user.email || 'User';
+  const fullName = user?.profile?.fullName || session.user.name || session.user.email || 'User';
   // User role should be in session or fetched from User model if needed.
   // For now we rely on session.
   // User role should be in session or fetched from User model if needed.
