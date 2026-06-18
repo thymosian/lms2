@@ -35,3 +35,7 @@
 **Learning:** Found an anti-pattern in `src/app/dashboard/(main)/page.tsx` and `src/app/dashboard/(main)/training/page.tsx` where both `getCourses()` and `getDashboardStats()` were called in parallel. Both queried the database for all `course` objects and associated `enrollments` + `lessons` using `prisma.course.findMany()`, resulting in a redundant database request (Prisma N+1 / redundant query anti-pattern).
 **Action:** Replaced both calls with a single `getDashboardData()` query that returns `{ courses, stats }` in one pass, slicing database queries in half for dashboard rendering.
 >>>>>>> origin/bolt-dashboard-stats-optimization-3644226783387250353
+
+## 2025-03-23 - [Consolidate Nested Layout Queries]
+**Learning:** In Next.js layouts (e.g., `src/app/dashboard/(main)/layout.tsx`), there was a pattern of fetching a `user` and their associated `profile` using two separate `prisma.findUnique` queries sequentially. This requires two full roundtrips to the database for every page navigation within the layout.
+**Action:** When fetching user metadata along with nested relation data (like a profile), combine them into a single `prisma.findUnique` query using the `select: { relationName: { select: { ... } } }` syntax to reduce layout latency by an entire database roundtrip.
